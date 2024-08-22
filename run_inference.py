@@ -2,10 +2,11 @@ from roboflow import Roboflow
 import supervision as sv
 import cv2
 import time
+import os
 
 # Set your API key and model ID
-api_key = "hjCFUfsJBCSxi8KzP8yC"
-model_id = "snowman1908/plastic-recyclable-detection/1"
+api_key = os.getenv("ROBOFLOW_API_KEY")
+model_id = os.getenv("MODEL_ID")
 
 # Initialize Roboflow
 rf = Roboflow(api_key=api_key)

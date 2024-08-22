@@ -2,10 +2,15 @@ from roboflow import Roboflow
 import cv2
 import serial
 import time
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Set your API key and model ID
-api_key = "hjCFUfsJBCSxi8KzP8yC"
-model_id = "snowman1908/plastic-recyclable-detection/1"
+api_key = os.getenv("ROBOFLOW_API_KEY")
+model_id = os.getenv("MODEL_ID")
 
 # Initialize Roboflow
 rf = Roboflow(api_key=api_key)
@@ -14,11 +19,8 @@ rf = Roboflow(api_key=api_key)
 project = rf.workspace().project("plastic-recyclable-detection")
 model = project.version(1).model
 
-# Initialize the camera
-cap = cv2.VideoCapture(0)  # Use 0 for the default camera
-
 # Initialize serial communication with Arduino
-serial_device_name = '/dev/cu.usbserial-2140'  # Replace with your correct serial port
+serial_device_name = '/dev/cu.usbserial-2110'  # Replace with your correct serial port
 try:
     arduino = serial.Serial(serial_device_name, 9600)
     time.sleep(2)  # Allow time for the connection to establish
@@ -35,6 +37,10 @@ def send_serial_command(command):
     except serial.SerialException as e:
         print(f"Error sending command: {e}")
 
+# Initialize the camera
+cap = cv2.VideoCapture(0)  # Use 0 for the default camera
+
+frame_count = 0
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -69,8 +75,10 @@ while True:
         # Draw label
         cv2.putText(frame, f'{label} {confidence:.2f}', (int(x - w/2), int(y - h/2 - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-    # Display the annotated frame
-    cv2.imshow('Waste Detection', frame)
+    # Save the annotated frame to disk
+    filename = f'output_frame_{frame_count}.jpg'
+    cv2.imwrite(filename, frame)
+    frame_count += 1
 
     # Determine type of plastic detected
     for detection in detections:
@@ -80,9 +88,9 @@ while True:
         else:
             send_serial_command('L')  # Move servo to right for other plastics
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # Use a different key check mechanism for exit
+    if frame_count >= 100:  # Stop after 100 frames, adjust as needed
         break
 
 cap.release()
-cv2.destroyAllWindows()
 arduino.close()
